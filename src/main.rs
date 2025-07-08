@@ -1,11 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Mutex};
 
 use actix_web::{App, HttpServer, web};
 mod handlers;
+mod models;
 mod routes;
 
 pub struct AppState {
-    pub platforms: HashMap<String, i32>,
+    pub platforms: Mutex<HashMap<String, i64>>,
 }
 
 #[actix_web::main]
@@ -17,7 +18,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .app_data(web::Data::new(AppState {
-                platforms: HashMap::new(),
+                platforms: Mutex::new(HashMap::new()),
             }))
             .configure(routes)
     })
