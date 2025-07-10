@@ -3,6 +3,7 @@ use std::time::Duration;
 use actix_web::{Error, HttpRequest, HttpResponse, get, post, rt, web};
 use actix_ws::{Message, handle};
 use serde_json::json;
+use tokio::sync::mpsc;
 
 use crate::AppState;
 
@@ -13,7 +14,12 @@ pub async fn connect(
     stream: web::Payload,
 ) -> Result<HttpResponse, Error> {
     let (res, session, mut stream) = handle(&req, stream)?;
+    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
 
+    let client_id: String = uuid::Uuid::new_v4().into();
+    app_state.clients.lock().unwrap().insert(client_id, tx);
+
+    // accept connections from client and handle the connection and closing connection
     {
         rt::spawn({
             let mut session = session.clone();
@@ -43,6 +49,7 @@ pub async fn connect(
         });
     }
 
+    // ping the user every 30 seconds to check the availability. If ping failed then close the connection
     {
         rt::spawn({
             let mut session = session.clone();
