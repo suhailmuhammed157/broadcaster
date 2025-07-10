@@ -1,12 +1,14 @@
 use std::{collections::HashMap, sync::Mutex};
 
 use actix_web::{App, HttpServer, web};
+use tokio::sync::mpsc;
 mod handlers;
 mod models;
 mod routes;
 
 pub struct AppState {
     pub platforms: Mutex<HashMap<String, i64>>,
+    pub clients: Mutex<HashMap<String, mpsc::UnboundedSender<String>>>,
 }
 
 #[actix_web::main]
@@ -19,6 +21,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(AppState {
                 platforms: Mutex::new(HashMap::new()),
+                clients: Mutex::new(HashMap::new()),
             }))
             .configure(routes)
     })
@@ -28,5 +31,6 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn routes(app: &mut web::ServiceConfig) {
-    app.configure(routes::platform::config);
+    app.configure(routes::platform::config)
+        .configure(routes::ws::config);
 }

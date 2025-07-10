@@ -186,6 +186,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-ws"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3a1fb4f9f2794b0aadaf2ba5f14a6f034c7e86957b458c506a8cb75953f2d99"
+dependencies = [
+ "actix-codec",
+ "actix-http",
+ "actix-web",
+ "bytestring",
+ "futures-core",
+ "tokio",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -321,11 +335,13 @@ name = "broadcaster"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "actix-ws",
  "dotenv",
  "env_logger",
  "log",
  "serde",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -1327,7 +1343,19 @@ dependencies = [
  "signal-hook-registry",
  "slab",
  "socket2",
+ "tokio-macros",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "tokio-macros"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e06d43f1345a3bcd39f6a56dbb7dcab2ba47e68e8ac134855e7e2bdbaf8cab8"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
