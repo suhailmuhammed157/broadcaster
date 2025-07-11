@@ -32,8 +32,6 @@ pub async fn register(
     let mut response = HashMap::new();
     response.insert("platform_id", id);
 
-    println!("After insert: {:?}", *platform);
-
     Ok(HttpResponse::Ok().json(json!({
         "Status":200,
         "Message": format!("Platform added with id {id}"),
