@@ -4,5 +4,9 @@ use actix_web::web;
 use crate::handlers;
 
 pub fn config(config: &mut web::ServiceConfig) {
-    config.service(web::scope("/platform").service(handlers::platform::register));
+    config.service(
+        web::scope("/platform")
+            .service(handlers::platform::register)
+            .service(handlers::platform::broadcast),
+    );
 }

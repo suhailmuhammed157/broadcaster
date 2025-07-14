@@ -1,8 +1,10 @@
 use std::{collections::HashMap, sync::Mutex};
 
 use actix_web::{App, HttpServer, web};
+
 use tokio::sync::mpsc;
 mod handlers;
+mod middleware;
 mod models;
 mod routes;
 

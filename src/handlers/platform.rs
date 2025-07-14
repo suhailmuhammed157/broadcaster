@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use actix_web::{Error, HttpResponse, post, web};
+use jwt_lib::Platform;
 use serde_json::json;
 
-use crate::{AppState, models::platform::AddPlatform};
+use crate::{AppState, middleware::platform_auth::AuthPlatform, models::platform::AddPlatform};
 
 #[post("/register")]
 pub async fn register(
@@ -29,12 +28,37 @@ pub async fn register(
 
     let id: i64 = platform.len() as i64 + 1;
     platform.insert(register_json.platform_name.clone(), id);
-    let mut response = HashMap::new();
-    response.insert("platform_id", id);
 
+    let added_platform = Platform {
+        platform_name: register_json.platform_name.clone(),
+        platform_id: id,
+    };
+
+    let token = jwt_lib::get_jwt(added_platform);
+
+    match token {
+        Err(e) => Ok(HttpResponse::InternalServerError().json(json!({
+            "Status":200,
+            "Message": format!("unable to generate token"),
+            "Error":e.to_string()
+        }))),
+        Ok(val) => Ok(HttpResponse::Ok().json(json!({
+            "Status":200,
+            "Message": format!("Platform added with id {id}"),
+            "Data":{
+                "platform_id":id,
+                "token":val
+            }
+        }))),
+    }
+}
+
+#[post("/broadcast")]
+pub async fn broadcast(platform: AuthPlatform) -> Result<HttpResponse, Error> {
+    println!("{:?}", platform);
     Ok(HttpResponse::Ok().json(json!({
         "Status":200,
-        "Message": format!("Platform added with id {id}"),
-        "Data":response
+        "Message": format!("Platform added with id "),
+        "Data":""
     })))
 }
