@@ -9,7 +9,12 @@ mod models;
 mod routes;
 
 pub struct AppState {
-    pub platforms: Mutex<HashMap<String, i64>>,
+    pub rooms: Mutex<Vec<Room>>,
+}
+
+pub struct Room {
+    pub platform_name: String,
+    pub platform_id: i64,
     pub clients: Mutex<HashMap<String, mpsc::UnboundedSender<String>>>,
 }
 
@@ -20,8 +25,7 @@ async fn main() -> std::io::Result<()> {
     log::info!("Server is Listining on 127.0.0.1:9090");
 
     let app_state = web::Data::new(AppState {
-        platforms: Mutex::new(HashMap::new()),
-        clients: Mutex::new(HashMap::new()),
+        rooms: Mutex::new(Vec::new()),
     });
 
     HttpServer::new(move || App::new().app_data(app_state.clone()).configure(routes))

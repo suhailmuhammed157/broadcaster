@@ -1,8 +1,14 @@
+use std::{collections::HashMap, sync::Mutex};
+
 use actix_web::{Error, HttpResponse, post, web};
 use jwt_lib::Platform;
 use serde_json::json;
 
-use crate::{AppState, middlewares::platform_auth::AuthPlatform, models::platform::AddPlatform};
+use crate::{
+    AppState, Room,
+    middlewares::platform_auth::AuthPlatform,
+    models::platform::{AddPlatform, Broadcast},
+};
 
 #[post("/register")]
 pub async fn register(
@@ -17,24 +23,35 @@ pub async fn register(
         })));
     }
 
-    let mut platform = app_state.platforms.lock().unwrap();
+    // let mut platform = app_state.platforms.lock().unwrap();
+    let mut rooms = app_state.rooms.lock().unwrap();
 
-    if platform.contains_key(&register_json.platform_name) {
+    if rooms
+        .iter()
+        .any(|item| &item.platform_name == &register_json.platform_name)
+    {
         return Ok(HttpResponse::BadRequest().json(json!({
             "Status":404,
             "Message": format!("platform already exists")
         })));
     }
 
-    let id: i64 = platform.len() as i64 + 1;
-    platform.insert(register_json.platform_name.clone(), id);
+    let id: i64 = rooms.len() as i64 + 1;
 
-    let added_platform = Platform {
-        platform_name: register_json.platform_name.clone(),
+    let platform_to_be_added = Room {
         platform_id: id,
+        platform_name: register_json.platform_name.clone(),
+        clients: Mutex::new(HashMap::new()),
     };
 
-    let token = jwt_lib::get_jwt(added_platform);
+    rooms.push(platform_to_be_added);
+
+    let platform = Platform {
+        platform_id: id,
+        platform_name: register_json.platform_name.clone(),
+    };
+
+    let token = jwt_lib::get_jwt(platform);
 
     match token {
         Err(e) => Ok(HttpResponse::InternalServerError().json(json!({
@@ -56,11 +73,33 @@ pub async fn register(
 #[post("/broadcast")]
 pub async fn broadcast(
     app_state: web::Data<AppState>,
-    _: AuthPlatform,
+    platform_details: AuthPlatform,
+    broadcast_json: web::Json<Broadcast>,
 ) -> Result<HttpResponse, Error> {
-    let clients_guard = app_state.clients.lock().unwrap(); // lock the mutex
-    for (id, tx) in clients_guard.iter() {
-        match tx.send(String::from("hey")) {
+    let rooms = app_state.rooms.lock().unwrap();
+
+    let platform_found = rooms
+        .iter()
+        .find(|room| room.platform_id == platform_details.0.platform_id);
+
+    if platform_found.is_none() {
+        return Ok(HttpResponse::Unauthorized().json(json!({
+            "Status":401,
+            "Message": format!("platform not found"),
+        })));
+    }
+
+    if broadcast_json.message == "" {
+        return Ok(HttpResponse::BadRequest().json(json!({
+            "Status":400,
+            "Message": format!("message is required"),
+        })));
+    }
+
+    let clients = platform_found.unwrap().clients.lock().unwrap();
+
+    for (id, tx) in clients.iter() {
+        match tx.send(broadcast_json.message.clone()) {
             Ok(_) => {}
             Err(e) => {
                 println!("Error or boradcasting to client id {id} with error {e}");
