@@ -4,7 +4,7 @@ use actix_web::{App, HttpServer, web};
 
 use tokio::sync::mpsc;
 mod handlers;
-mod middleware;
+mod middlewares;
 mod models;
 mod routes;
 

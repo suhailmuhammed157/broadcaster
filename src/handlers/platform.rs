@@ -2,7 +2,7 @@ use actix_web::{Error, HttpResponse, post, web};
 use jwt_lib::Platform;
 use serde_json::json;
 
-use crate::{AppState, middleware::platform_auth::AuthPlatform, models::platform::AddPlatform};
+use crate::{AppState, middlewares::platform_auth::AuthPlatform, models::platform::AddPlatform};
 
 #[post("/register")]
 pub async fn register(
@@ -54,11 +54,22 @@ pub async fn register(
 }
 
 #[post("/broadcast")]
-pub async fn broadcast(platform: AuthPlatform) -> Result<HttpResponse, Error> {
-    println!("{:?}", platform);
+pub async fn broadcast(
+    app_state: web::Data<AppState>,
+    _: AuthPlatform,
+) -> Result<HttpResponse, Error> {
+    let clients_guard = app_state.clients.lock().unwrap(); // lock the mutex
+    for (id, tx) in clients_guard.iter() {
+        match tx.send(String::from("hey")) {
+            Ok(_) => {}
+            Err(e) => {
+                println!("Error or boradcasting to client id {id} with error {e}");
+                continue;
+            }
+        }
+    }
     Ok(HttpResponse::Ok().json(json!({
         "Status":200,
-        "Message": format!("Platform added with id "),
-        "Data":""
+        "Message": format!("Message broadcasted successfully"),
     })))
 }
