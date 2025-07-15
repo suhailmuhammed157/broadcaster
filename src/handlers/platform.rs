@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use actix_web::{Error, HttpResponse, post, web};
 use jwt_lib::Platform;
@@ -26,10 +29,7 @@ pub async fn register(
     // let mut platform = app_state.platforms.lock().unwrap();
     let mut rooms = app_state.rooms.lock().unwrap();
 
-    if rooms
-        .iter()
-        .any(|item| &item.platform_name == &register_json.platform_name)
-    {
+    if rooms.contains_key(&register_json.platform_name) {
         return Ok(HttpResponse::BadRequest().json(json!({
             "Status":404,
             "Message": format!("platform already exists")
@@ -38,13 +38,12 @@ pub async fn register(
 
     let id: i64 = rooms.len() as i64 + 1;
 
-    let platform_to_be_added = Room {
+    let new_room = Arc::new(Room {
         platform_id: id,
-        platform_name: register_json.platform_name.clone(),
         clients: Mutex::new(HashMap::new()),
-    };
+    });
 
-    rooms.push(platform_to_be_added);
+    rooms.insert(register_json.platform_name.clone(), new_room);
 
     let platform = Platform {
         platform_id: id,
@@ -78,11 +77,7 @@ pub async fn broadcast(
 ) -> Result<HttpResponse, Error> {
     let rooms = app_state.rooms.lock().unwrap();
 
-    let platform_found = rooms
-        .iter()
-        .find(|room| room.platform_id == platform_details.0.platform_id);
-
-    if platform_found.is_none() {
+    if !rooms.contains_key(&platform_details.0.platform_name) {
         return Ok(HttpResponse::Unauthorized().json(json!({
             "Status":401,
             "Message": format!("platform not found"),
@@ -96,7 +91,9 @@ pub async fn broadcast(
         })));
     }
 
-    let clients = platform_found.unwrap().clients.lock().unwrap();
+    let room = rooms.get(&platform_details.0.platform_name).unwrap();
+
+    let clients = room.clients.lock().unwrap();
 
     for (id, tx) in clients.iter() {
         match tx.send(broadcast_json.message.clone()) {

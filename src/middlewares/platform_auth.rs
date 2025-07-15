@@ -32,9 +32,7 @@ impl FromRequest for AuthPlatform {
                         e.clone(),
                         HttpResponse::Unauthorized().json(json!({
                           "success": false,
-                          "data": {
                             "message": "error or invalid token"
-                          }
                         })),
                     ))),
                 }
@@ -44,9 +42,8 @@ impl FromRequest for AuthPlatform {
                 String::from("No token provided"),
                 HttpResponse::Unauthorized().json(json!({
                   "success": false,
-                  "data": {
                     "message": "No token provided"
-                  }
+
                 })),
             ))),
         }

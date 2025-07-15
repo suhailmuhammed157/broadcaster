@@ -7,23 +7,24 @@ use tokio::sync::mpsc;
 
 use crate::{AppState, models::ws::ConnectQuery};
 
-fn remove_client(app_state: &AppState, platform_name: String, client_id_to_remove: String) {
-    let mut rooms = app_state.rooms.lock().unwrap();
-    if let Some(room) = rooms.iter_mut().find(|r| r.platform_name == platform_name) {
+fn remove_client(app_state: &AppState, platform_name: String, client_id: String) {
+    let rooms = app_state.rooms.lock().unwrap();
+    if let Some(room) = rooms.get(&platform_name) {
         let mut clients = room.clients.lock().unwrap();
-
-        let removed_item = clients.remove(&client_id_to_remove);
-
-        // free up the space of removed items
-        clients.shrink_to_fit();
-
-        if let Some(item) = removed_item {
-            println!("client {:?} has been removed", item);
+        if clients.remove(&client_id).is_some() {
+            println!(
+                "Client {} removed from platform {}",
+                client_id, platform_name
+            );
+            clients.shrink_to_fit();
         } else {
-            println!("Item has been removed before");
+            println!(
+                "Client {} was already removed from platform {}",
+                client_id, platform_name
+            );
         }
     } else {
-        println!("room not found");
+        println!("Room for platform {} no longer exists", platform_name);
     }
 }
 
@@ -39,20 +40,17 @@ pub async fn connect(
 
     let client_id: String = uuid::Uuid::new_v4().into();
 
-    if let Some(room) = app_state
-        .rooms
-        .lock()
-        .unwrap()
-        .iter()
-        .find(|room| room.platform_name == query.platform)
-    {
-        room.clients.lock().unwrap().insert(client_id.clone(), tx);
-    } else {
+    let rooms = app_state.rooms.lock().unwrap();
+
+    if !rooms.contains_key(&query.platform) {
         return Ok(HttpResponse::BadRequest().json(json!({
             "Status":404,
             "Message": format!("platform does not exists")
         })));
     }
+    let mut clients = rooms.get(&query.platform).unwrap().clients.lock().unwrap();
+
+    clients.insert(client_id.clone(), tx);
 
     // accept connections from client and handle the connection and closing connection
     {
@@ -132,8 +130,6 @@ pub async fn connect(
             }
         });
     }
-
-    // println!("client {} connected with websocket", { client_id });
 
     Ok(res)
 }
