@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = [".", "jwt-lib"]
+members = [".", "jwt-lib","utils"]
 
 [dependencies]
 jwt-lib = { path = "jwt-lib" } 
+utils = { path = "utils" } 
 dotenv = "0.15.0"
 env_logger = "0.11.8"
 actix-web = "4"

@@ -16,14 +16,15 @@ struct Claims {
 }
 
 pub fn get_jwt(platform: Platform) -> Result<String, String> {
+    let secret = utils::SECRET.clone();
     let token = encode(
         &Header::default(),
         &Claims {
             platform_id: platform.platform_id,
             platform_name: platform.platform_name,
-            exp: (Utc::now() + Duration::minutes(1)).timestamp(),
+            exp: (Utc::now() + Duration::minutes(30)).timestamp(),
         },
-        &EncodingKey::from_secret("mykey".as_bytes()),
+        &EncodingKey::from_secret(secret.as_bytes()),
     )
     .map_err(|e| e.to_string());
 
@@ -31,15 +32,17 @@ pub fn get_jwt(platform: Platform) -> Result<String, String> {
 }
 
 pub fn decode_jwt(token: &str) -> Result<Platform, String> {
-    let token_data = decode::<Platform>(
+    let secret = utils::SECRET.clone();
+    let token_data = decode::<Claims>(
         token,
-        &DecodingKey::from_secret("mykey".as_bytes()),
+        &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
     );
 
-    match token_data {
-        Ok(token_data) => Ok(token_data.claims),
-
-        Err(e) => Err(e.to_string()),
-    }
+    token_data
+        .map(|data| Platform {
+            platform_id: data.claims.platform_id,
+            platform_name: data.claims.platform_name,
+        })
+        .map_err(|e| e.to_string())
 }
