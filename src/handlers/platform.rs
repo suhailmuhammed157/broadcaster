@@ -10,7 +10,7 @@ use serde_json::json;
 use crate::{
     AppState, Room,
     middlewares::platform_auth::AuthPlatform,
-    models::platform::{AddPlatform, Broadcast},
+    models::platform::{AddPlatform, Broadcast, RenewPlatformToken},
 };
 
 #[post("/register")]
@@ -18,7 +18,7 @@ pub async fn register(
     app_state: web::Data<AppState>,
     register_json: web::Json<AddPlatform>,
 ) -> Result<HttpResponse, Error> {
-    if register_json.platform_name == "" {
+    if register_json.platform_name.is_empty() {
         return Ok(HttpResponse::BadRequest().json(json!({
             "Status":404,
             "Message": format!("platform_name is missing")
@@ -63,6 +63,81 @@ pub async fn register(
             "Message": format!("Platform added with id {id}"),
             "Data":{
                 "platform_id":id,
+                "token":val
+            }
+        }))),
+    }
+}
+
+#[post("/renew-token")]
+pub async fn renew_token(
+    app_state: web::Data<AppState>,
+    renew_platform_token_json: web::Json<RenewPlatformToken>,
+) -> Result<HttpResponse, Error> {
+    if renew_platform_token_json.platform_name.is_empty() {
+        return Ok(HttpResponse::BadRequest().json(json!({
+            "Status":404,
+            "Message": format!("platform_name is missing")
+
+        })));
+    }
+
+    if renew_platform_token_json.platform_id.is_empty() {
+        return Ok(HttpResponse::BadRequest().json(json!({
+            "Status":404,
+            "Message": format!("platform_id is missing")
+
+        })));
+    }
+
+    // Parse platform_id from string to i64
+    let platform_id: i64 = match renew_platform_token_json.platform_id.parse() {
+        Ok(id) => id,
+        Err(_) => {
+            return Ok(HttpResponse::BadRequest().json(json!({
+                "Status": 400,
+                "Message": "platform_id is not a valid number"
+            })));
+        }
+    };
+
+    let rooms = app_state.rooms.lock().unwrap();
+
+    let room = match rooms.get(&renew_platform_token_json.platform_name) {
+        Some(r) => r.clone(), // Clone the Arc<Room>
+        None => {
+            return Ok(HttpResponse::BadRequest().json(json!({
+                "Status": 404,
+                "Message": "platform does not exist"
+            })));
+        }
+    };
+
+    if room.platform_id != platform_id {
+        return Ok(HttpResponse::BadRequest().json(json!({
+            "Status": 403,
+            "Message": "platform_id does not match"
+        })));
+    }
+
+    let platform = Platform {
+        platform_id: platform_id,
+        platform_name: renew_platform_token_json.platform_name.clone(),
+    };
+
+    let token = jwt_lib::get_jwt(platform);
+
+    match token {
+        Err(e) => Ok(HttpResponse::InternalServerError().json(json!({
+            "Status":200,
+            "Message": format!("unable to generate token"),
+            "Error":e.to_string()
+        }))),
+        Ok(val) => Ok(HttpResponse::Ok().json(json!({
+            "Status":200,
+            "Message": format!("Renew successfull"),
+            "Data":{
+                "platform_id":platform_id,
                 "token":val
             }
         }))),
