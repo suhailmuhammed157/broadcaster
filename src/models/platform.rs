@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Debug, Deserialize)]
 pub struct AddPlatform {
@@ -7,7 +10,7 @@ pub struct AddPlatform {
 
 #[derive(Debug, Deserialize)]
 pub struct Broadcast {
-    pub message: String,
+    pub message: HashMap<String, Value>,
 }
 
 #[derive(Debug, Deserialize)]

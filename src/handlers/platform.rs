@@ -3,14 +3,14 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use actix_web::{Error, HttpResponse, post, web};
+use actix_web::{post, web, Error, HttpResponse};
 use jwt_lib::Platform;
 use serde_json::json;
 
 use crate::{
-    AppState, Room,
     middlewares::platform_auth::AuthPlatform,
     models::platform::{AddPlatform, Broadcast, RenewPlatformToken},
+    AppState, Room,
 };
 
 #[post("/register")]
@@ -159,7 +159,7 @@ pub async fn broadcast(
         })));
     }
 
-    if broadcast_json.message == "" {
+    if broadcast_json.message.is_empty() {
         return Ok(HttpResponse::BadRequest().json(json!({
             "Status":400,
             "Message": format!("message is required"),
@@ -170,8 +170,10 @@ pub async fn broadcast(
 
     let clients = room.clients.lock().unwrap();
 
+    let broadcast_message = serde_json::to_string(&broadcast_json.message).unwrap();
+
     for (id, tx) in clients.iter() {
-        match tx.send(broadcast_json.message.clone()) {
+        match tx.send(broadcast_message.clone()) {
             Ok(_) => {}
             Err(e) => {
                 println!("Error or boradcasting to client id {id} with error {e}");
